@@ -64,19 +64,19 @@ npm install
 
 ### 1. Train Model
 ```bash
-cd "D:\Q-Screen Project\ml"
+cd "Drive\Q-Screen Project\ml"
 python train_model.py
 ```
 
 ### 2. Run Backend
 ```bash
-cd "D:\Q-Screen Project\backend"
+cd "Drive:\Q-Screen Project\backend"
 uvicorn main:app --reload --port 8000
 ```
 
 ### 3. Run Frontend
 ```bash
-cd "D:\Q-Screen Project\frontend"
+cd "Drive:\Q-Screen Project\frontend"
 npm run dev
 ```
 
