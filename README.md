@@ -64,19 +64,19 @@ npm install
 
 ### 1. Train Model
 ```bash
-cd "Drive\Q-Screen Project\ml"
+cd "Drive\Q-Screen-Molecular-Screener\ml"
 python train_model.py
 ```
 
 ### 2. Run Backend
 ```bash
-cd "Drive:\Q-Screen Project\backend"
+cd "Drive:\Q-Screen-Molecular-Screener\backend"
 uvicorn main:app --reload --port 8000
 ```
 
 ### 3. Run Frontend
 ```bash
-cd "Drive:\Q-Screen Project\frontend"
+cd "Drive:\Q-Screen-Molecular-Screener\frontend"
 npm run dev
 ```
 
