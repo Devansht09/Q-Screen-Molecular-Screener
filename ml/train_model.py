@@ -158,6 +158,16 @@ def train():
     print("  Q-Screen Multi-Model Training Pipeline")
     print("=" * 60)
 
+    model_files = [
+        "qscreen_model.pkl",
+        "qscreen_model_randomforest.pkl",
+        "qscreen_model_gradientboosting.pkl"
+    ]
+
+    if all(os.path.exists(os.path.join(ML_DIR, f)) for f in model_files):
+        print("[+] Models already trained. Skipping training.")
+        return
+
     if not XGBOOST_AVAILABLE:
         print("[!] XGBoost not available. Install with: pip install xgboost")
         print("    Continuing with GradientBoosting and RandomForest only.")
