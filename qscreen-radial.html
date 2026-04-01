@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Q-Screen</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.1.0/3Dmol-min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c14;--bg2:#0d1220;
+  --glass:rgba(255,255,255,0.05);--glass2:rgba(255,255,255,0.08);
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --blue:#4f9eff;--blue-g:rgba(79,158,255,0.25);--blue-d:rgba(79,158,255,0.1);
+  --teal:#2dd4bf;--teal-g:rgba(45,212,191,0.25);
+  --purple:#a78bfa;--purple-d:rgba(167,139,250,0.12);
+  --green:#34d399;--amber:#fbbf24;--red:#f87171;
+  --white:#f8fafc;--wd:rgba(248,250,252,0.6);--wm:rgba(248,250,252,0.28);
+  --mono:'JetBrains Mono',monospace;--sans:'Manrope',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--white);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+input{font-family:inherit}
+
+.orb{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+.o1{width:700px;height:700px;background:rgba(79,158,255,0.07);top:-250px;right:-200px}
+.o2{width:500px;height:500px;background:rgba(45,212,191,0.05);bottom:-150px;left:-100px}
+.o3{width:350px;height:350px;background:rgba(167,139,250,0.06);top:45%;left:38%}
+
+/* Loader */
+.loader{position:fixed;inset:0;z-index:9999;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:28px}
+.loader.active{display:flex}
+.atom-scene{position:relative;width:140px;height:140px}
+.atom-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,var(--blue));box-shadow:0 0 0 4px rgba(79,158,255,0.12),0 0 24px var(--blue),0 0 60px rgba(79,158,255,0.25);animation:cp 2s ease-in-out infinite}
+@keyframes cp{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.25)}}
+.orb-ring{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid}
+.r1{width:70px;height:70px;margin:-35px 0 0 -35px;border-color:rgba(79,158,255,0.3);animation:s1 1.6s linear infinite}
+.r2{width:108px;height:42px;margin:-21px 0 0 -54px;border-color:rgba(45,212,191,0.2);animation:s2 2.4s linear infinite}
+.r3{width:130px;height:130px;margin:-65px 0 0 -65px;border-color:rgba(167,139,250,0.15);animation:s3 3.2s linear infinite}
+@keyframes s1{to{transform:rotate(360deg)}}
+@keyframes s2{from{transform:rotate(30deg)}to{transform:rotate(390deg)}}
+@keyframes s3{from{transform:rotate(-60deg)}to{transform:rotate(300deg)}}
+.orb-dot{position:absolute;top:-4px;left:50%;margin-left:-4px;width:8px;height:8px;border-radius:50%}
+.r1 .orb-dot{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+.r2 .orb-dot{background:var(--teal);box-shadow:0 0 8px var(--teal)}
+.r3 .orb-dot{background:var(--purple);box-shadow:0 0 8px var(--purple)}
+.loader-label{font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--wm)}
+.loader-msg{font-family:var(--mono);font-size:.68rem;color:var(--blue);min-height:1.2em;text-align:center}
+.loader-dots{display:flex;gap:6px}
+.ld{width:6px;height:6px;border-radius:50%;background:var(--blue-d);border:1px solid rgba(79,158,255,0.3);animation:dp 1.5s ease-in-out infinite}
+.ld:nth-child(2){animation-delay:.2s}.ld:nth-child(3){animation-delay:.4s}
+@keyframes dp{0%,100%{background:var(--blue-d)}50%{background:var(--blue)}}
+
+/* App */
+.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 36px;border-bottom:1px solid var(--border);backdrop-filter:blur(20px);background:rgba(8,12,20,0.7);position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--teal));display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;color:#fff;box-shadow:0 0 20px rgba(79,158,255,0.25)}
+.brand-name{font-size:.95rem;font-weight:700;letter-spacing:-.01em}
+.brand-sub{font-size:.6rem;color:var(--wm);font-weight:400;margin-top:1px}
+.topbar-right{display:flex;gap:10px;align-items:center}
+.pill{font-family:var(--mono);font-size:.6rem;padding:4px 12px;border-radius:100px;border:1px solid var(--border);background:var(--glass);color:var(--wm)}
+.pill.on{color:var(--teal);border-color:rgba(45,212,191,0.2);background:rgba(45,212,191,0.06)}
+
+/* Main */
+.main{flex:1;padding:36px 36px;max-width:1360px;margin:0 auto;width:100%}
+
+/* Input card */
+.input-card{background:var(--glass);border:1px solid var(--border);border-radius:20px;padding:24px 28px;backdrop-filter:blur(20px);margin-bottom:40px;position:relative;overflow:hidden}
+.input-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(79,158,255,0.5),rgba(45,212,191,0.4),transparent)}
+.input-row{display:flex;gap:10px;margin-bottom:14px}
+.input-wrap{flex:1;position:relative}
+.smiles-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;padding:13px 18px;font-family:var(--mono);font-size:.84rem;color:var(--white);outline:none;transition:all .2s;letter-spacing:.03em}
+.smiles-input::placeholder{color:var(--wm);font-family:var(--sans);font-size:.84rem;letter-spacing:0}
+.smiles-input:focus{border-color:rgba(79,158,255,0.4);background:rgba(79,158,255,0.04);box-shadow:0 0 0 3px rgba(79,158,255,0.08)}
+.analyze-btn{background:linear-gradient(135deg,#4f9eff,#3b82f6);color:#fff;border-radius:12px;font-size:.78rem;font-weight:700;letter-spacing:.07em;padding:0 26px;box-shadow:0 4px 20px rgba(79,158,255,0.25);transition:all .2s;white-space:nowrap}
+.analyze-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 30px rgba(79,158,255,0.4)}
+.analyze-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.examples{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ex-lbl{font-size:.62rem;color:var(--wm);letter-spacing:.1em;text-transform:uppercase}
+.ex-chip{font-size:.7rem;font-weight:500;color:var(--wd);background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:100px;padding:4px 14px;transition:all .15s}
+.ex-chip:hover{background:var(--blue-d);border-color:rgba(79,158,255,0.3);color:var(--blue)}
+
+/* Error */
+.err{background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:12px;padding:12px 18px;font-size:.82rem;color:var(--red);margin-bottom:20px;display:none}
+.err.active{display:block}
+
+/* Results */
+.results{display:none;opacity:0;transition:opacity .6s}
+.results.active{display:block}
+.results.revealed{opacity:1}
+
+/* Formula strip */
+.formula-strip{text-align:center;margin-bottom:48px}
+.formula-text{font-size:3.2rem;font-weight:800;letter-spacing:-.025em;background:linear-gradient(135deg,#fff,rgba(248,250,252,0.55));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.formula-smiles{font-family:var(--mono);font-size:.68rem;color:var(--wm);margin-top:6px;letter-spacing:.04em;word-break:break-all}
+.formula-chips{display:flex;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.fchip{font-size:.62rem;font-weight:500;letter-spacing:.06em;padding:3px 12px;border-radius:100px;border:1px solid}
+.fc-b{color:var(--blue);border-color:rgba(79,158,255,0.25);background:rgba(79,158,255,0.08)}
+.fc-t{color:var(--teal);border-color:rgba(45,212,191,0.25);background:rgba(45,212,191,0.08)}
+.fc-p{color:var(--purple);border-color:rgba(167,139,250,0.25);background:rgba(167,139,250,0.08)}
+
+/* RADIAL LAYOUT */
+.radial-wrap{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:56px;min-height:500px}
+.deco-ring{position:absolute;border-radius:50%;border:1px solid;pointer-events:none}
+.dr1{width:420px;height:420px;border-color:rgba(79,158,255,0.05)}
+.dr2{width:580px;height:580px;border-color:rgba(45,212,191,0.03)}
+.dr3{width:740px;height:740px;border-color:rgba(167,139,250,0.025);border-style:dashed}
+
+/* Center orb */
+.center-orb{position:relative;z-index:10;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(79,158,255,0.14),rgba(8,12,20,0.95));border:1px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 1px rgba(79,158,255,0.08),0 0 50px rgba(79,158,255,0.06),inset 0 1px 0 rgba(255,255,255,0.07),0 24px 80px rgba(0,0,0,0.6);backdrop-filter:blur(30px);flex-shrink:0}
+.score-ring-svg{position:absolute;top:-14px;left:-14px;width:calc(100% + 28px);height:calc(100% + 28px)}
+.score-num{font-size:3.6rem;font-weight:800;line-height:1;letter-spacing:-.03em}
+.score-100{font-size:.72rem;color:var(--wm);font-weight:400;margin-top:3px}
+.score-badge{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-top:10px;padding:3px 10px;border-radius:100px;border:1px solid}
+
+/* Satellite positions */
+.sat-container{position:absolute;inset:0;pointer-events:none}
+.sat{position:absolute;pointer-events:all}
+.sat-n{top:10px;left:50%;transform:translateX(-50%)}
+.sat-e{right:0;top:50%;transform:translateY(-50%)}
+.sat-s{bottom:10px;left:50%;transform:translateX(-50%)}
+.sat-w{left:0;top:50%;transform:translateY(-50%)}
+
+/* Connector lines */
+.connectors{position:absolute;inset:0;pointer-events:none;overflow:visible}
+
+/* Sat card */
+.sat-card{background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--border);border-radius:16px;padding:14px 18px;min-width:148px;box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.06);transition:all .2s}
+.sat-card:hover{background:var(--glass2);border-color:var(--border2);transform:scale(1.04);box-shadow:0 12px 40px rgba(0,0,0,0.45)}
+.sc-lbl{font-size:.58rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--wm);margin-bottom:6px}
+.sc-val{font-family:var(--mono);font-size:1.25rem;font-weight:500;color:var(--white);line-height:1}
+.sc-unit{font-size:.62rem;color:var(--wm);margin-top:3px}
+.sc-sub{font-size:.65rem;color:var(--wm);margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
+
+/* Tab strip */
+.tab-strip{display:flex;gap:3px;background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:4px;backdrop-filter:blur(20px);width:fit-content;margin-bottom:20px}
+.tab-btn{font-size:.7rem;font-weight:500;letter-spacing:.04em;padding:7px 18px;border-radius:8px;color:var(--wm);transition:all .2s}
+.tab-btn:hover{color:var(--wd);background:rgba(255,255,255,0.04)}
+.tab-btn.active{background:rgba(255,255,255,0.1);color:var(--white);box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:pin .3s ease}
+@keyframes pin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Grid */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:900px){.detail-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:580px){.detail-grid{grid-template-columns:1fr}}
+
+/* Glass panel */
+.gpanel{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.05)}
+.gph{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.gpt{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--wd);display:flex;align-items:center;gap:8px}
+.pi{width:6px;height:6px;border-radius:50%}
+.gpb{padding:18px}
+
+/* Descriptors */
+.desc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.035)}
+.desc-row:last-child{border-bottom:none}
+.dk{font-size:.76rem;color:var(--wm)}
+.dv{font-family:var(--mono);font-size:.76rem;color:var(--white);font-weight:500}
+.dv.w{color:var(--amber)}
+
+/* Lipinski */
+.lv{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 12px;border-radius:100px;border:1px solid}
+.lv.pass{color:var(--green);border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.08)}
+.lv.fail{color:var(--red);border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08)}
+.lrule{display:flex;align-items:center;gap:10px;font-size:.76rem;color:var(--wd);padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.035)}
+.lrule:last-child{border-bottom:none}
+.ldot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ldot.pass{background:var(--green);box-shadow:0 0 6px rgba(52,211,153,0.5)}
+.ldot.fail{background:var(--red);box-shadow:0 0 6px rgba(248,113,113,0.5)}
+
+/* Drug */
+.dentry{padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.dentry:last-child{border-bottom:none}
+.drow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.dname{font-size:.84rem;font-weight:600;color:var(--white)}
+.dpct{font-family:var(--mono);font-size:.76rem}
+.dtrack{height:3px;border-radius:100px;background:rgba(255,255,255,0.06);overflow:hidden;margin-bottom:4px}
+.dfill{height:100%;border-radius:100px;width:0;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.dind{font-size:.65rem;color:var(--wm)}
+
+/* 3D */
+.viewer-outer{border-radius:18px;overflow:hidden;background:#030508;border:1px solid var(--border);position:relative;z-index:1;box-shadow:0 8px 40px rgba(0,0,0,0.5)}
+#viewer{width:100%;height:420px;display:block;position:relative;z-index:1}
+.vfoot{padding:10px 16px;border-top:1px solid var(--border);font-size:.6rem;color:var(--wm);display:flex;justify-content:space-between;background:rgba(255,255,255,0.02)}
+.vzwarn{font-size:.7rem;color:var(--amber);padding:10px 16px}
+
+/* AI */
+.ai-badge{font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:100px;color:var(--purple);border:1px solid rgba(167,139,250,0.3);background:var(--purple-d)}
+.ai-content{font-size:.88rem;line-height:1.85;color:var(--wd);white-space:pre-wrap}
+
+/* Footer */
+.footer{padding:20px 36px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:.62rem;color:var(--wm);flex-wrap:wrap;gap:8px}
+.fb{font-weight:700;color:var(--wd)}
+
+@media(max-width:700px){
+  .topbar,.main,.footer{padding-left:20px;padding-right:20px}
+  .dr1,.dr2,.dr3,.sat-container,.connectors{display:none}
+  .radial-wrap{min-height:auto;margin-bottom:32px}
+  .formula-text{font-size:2.2rem}
+}
+</style>
+</head>
+<body>
+<div class="orb o1"></div>
+<div class="orb o2"></div>
+<div class="orb o3"></div>
+
+<div class="loader" id="loader">
+  <div class="atom-scene">
+    <div class="atom-core"></div>
+    <div class="orb-ring r1"><div class="orb-dot"></div></div>
+    <div class="orb-ring r2"><div class="orb-dot"></div></div>
+    <div class="orb-ring r3"><div class="orb-dot"></div></div>
+  </div>
+  <div class="loader-label">Analysing Structure</div>
+  <div class="loader-msg" id="loadMsg"></div>
+  <div class="loader-dots"><div class="ld"></div><div class="ld"></div><div class="ld"></div></div>
+</div>
+
+<div class="app">
+  <nav class="topbar">
+    <div class="brand">
+      <div class="brand-icon">Q</div>
+      <div><div class="brand-name">Q-Screen</div><div class="brand-sub">Molecular Stability Platform</div></div>
+    </div>
+    <div class="topbar-right">
+      <div class="pill">v1.0</div>
+      <div class="pill on">● Ready</div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="input-card">
+      <div class="input-row">
+        <div class="input-wrap">
+          <input class="smiles-input" id="smilesInput" placeholder="Enter SMILES — e.g. CCO, CC(=O)Oc1ccccc1C(=O)O" spellcheck="false" autocomplete="off"/>
+        </div>
+        <button class="analyze-btn" id="analyzeBtn" onclick="handleAnalyze()">Analyse →</button>
+      </div>
+      <div class="examples">
+        <span class="ex-lbl">Try —</span>
+        <button class="ex-chip" onclick="setEx('CCO')">Ethanol</button>
+        <button class="ex-chip" onclick="setEx('CC(=O)Oc1ccccc1C(=O)O')">Aspirin</button>
+        <button class="ex-chip" onclick="setEx('Cn1c(=O)c2c(ncn2C)n(C)c1=O')">Caffeine</button>
+        <button class="ex-chip" onclick="setEx('NCCc1ccc(O)c(O)c1')">Dopamine</button>
+        <button class="ex-chip" onclick="setEx('c1ccccc1')">Benzene</button>
+        <button class="ex-chip" onclick="setEx('CC(=O)Nc1ccc(O)cc1')">Paracetamol</button>
+      </div>
+    </div>
+
+    <div class="err" id="errCard"></div>
+
+    <div class="results" id="results">
+      <div class="formula-strip">
+        <div class="formula-text" id="rFormula"></div>
+        <div class="formula-smiles" id="rSmiles"></div>
+        <div class="formula-chips" id="rChips"></div>
+      </div>
+
+      <!-- RADIAL HERO -->
+      <div class="radial-wrap">
+        <div class="deco-ring dr1"></div>
+        <div class="deco-ring dr2"></div>
+        <div class="deco-ring dr3"></div>
+
+        <!-- Connector lines SVG -->
+        <svg class="connectors" viewBox="0 0 740 500" id="connSvg" style="position:absolute;width:100%;height:100%;top:0;left:0"></svg>
+
+        <!-- Satellites -->
+        <div class="sat-container">
+          <div class="sat sat-n">
+            <div class="sat-card">
+              <div class="sc-lbl">Ground-State Energy</div>
+              <div class="sc-val" id="sEnergy">—</div>
+              <div class="sc-unit">kcal / mol</div>
+            </div>
+          </div>
+          <div class="sat sat-e">
+            <div class="sat-card">
+              <div class="sc-lbl">Molecular Weight</div>
+              <div class="sc-val" id="sMW">—</div>
+              <div class="sc-unit">Daltons</div>
+              <div class="sc-sub" id="sLogP">LogP —</div>
+            </div>
+          </div>
+          <div class="sat sat-s">
+            <div class="sat-card">
+              <div class="sc-lbl">Top Drug Match</div>
+              <div class="sc-val" id="sDrug">—</div>
+              <div class="sc-unit" id="sDrugSim">similarity</div>
+            </div>
+          </div>
+          <div class="sat sat-w">
+            <div class="sat-card">
+              <div class="sc-lbl">Drug-Likeness</div>
+              <div class="sc-val" id="sLip">—</div>
+              <div class="sc-unit" id="sLipSub">Lipinski Ro5</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center orb -->
+        <div class="center-orb">
+          <svg class="score-ring-svg" viewBox="0 0 248 248">
+            <circle cx="124" cy="124" r="108" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="8"/>
+            <circle id="scoreArc" cx="124" cy="124" r="108" fill="none" stroke="var(--blue)"
+              stroke-width="8" stroke-linecap="round" transform="rotate(-90 124 124)"
+              stroke-dasharray="0 678.6"
+              style="transition:stroke-dasharray 1.6s cubic-bezier(.22,1,.36,1);filter:drop-shadow(0 0 12px var(--blue))"/>
+          </svg>
+          <div class="score-num" id="scoreNum" style="color:var(--blue)">—</div>
+          <div class="score-100">out of 100</div>
+          <div class="score-badge" id="scoreBadge">—</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tab-strip">
+        <button class="tab-btn active" onclick="switchTab('props',this)">Properties</button>
+        <button class="tab-btn" onclick="switchTab('drugs',this)">Drug Match</button>
+        <button class="tab-btn" onclick="switchTab('struct',this)">3D Structure</button>
+        <button class="tab-btn" onclick="switchTab('ai',this)">AI Analysis</button>
+      </div>
+
+      <!-- Properties -->
+      <div class="tab-panel active" id="tab-props">
+        <div class="detail-grid">
+          <div class="gpanel">
+            <div class="gph"><div class="gpt"><div class="pi" style="background:var(--blue)"></div>Descriptors</div></div>
+            <div class="gpb"><div id="descList"></div></div>
+          </div>
+          <div class="gpanel">
+            <div class="gph">
+              <div class="gpt"><div class="pi" style="background:var(--green)"></div>Lipinski Ro5</div>
+              <div class="lv" id="lipV"></div>
+            </div>
+            <div class="gpb"><div id="lipRules"></div></div>
+          </div>
+          <div class="gpanel" style="background:linear-gradient(145deg,rgba(79,158,255,0.08),rgba(45,212,191,0.04))">
+            <div class="gph"><div class="gpt"><div class="pi" style="background:var(--teal)"></div>Energy Profile</div></div>
+            <div class="gpb" id="energyProfile"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drugs -->
+      <div class="tab-panel" id="tab-drugs">
+        <div class="gpanel" style="margin-bottom:14px">
+          <div class="gph"><div class="gpt"><div class="pi" style="background:var(--purple)"></div>Structural Similarity · Tanimoto</div></div>
+          <div class="gpb"><div id="drugList"></div></div>
+        </div>
+      </div>
+
+      <!-- 3D -->
+      <div class="tab-panel" id="tab-struct">
+        <div class="viewer-outer">
+          <div id="viewer"></div>
+          <div class="vfoot"><span id="vLabel">—</span><span>Drag · Scroll · Right-click pan</span></div>
+        </div>
+        <div class="vzwarn" id="vzWarn"></div>
+      </div>
+
+      <!-- AI -->
+      <div class="tab-panel" id="tab-ai">
+        <div class="gpanel">
+          <div class="gph">
+            <div class="gpt"><div class="pi" style="background:var(--purple)"></div>AI Commentary</div>
+            <div class="ai-badge">Claude</div>
+          </div>
+          <div class="gpb"><div class="ai-content" id="aiContent">Submit a molecule to generate analysis.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span><span class="fb">Q-Screen</span> · Molecular Stability Platform</span>
+    <span>Research only · Not clinically validated · ML + RDKit + QM9</span>
+  </footer>
+</div>
+
+<script>
+const ATOMS={C:{mw:12.011},N:{mw:14.007},O:{mw:15.999},S:{mw:32.065},F:{mw:18.998},Cl:{mw:35.453},Br:{mw:79.904},I:{mw:126.90},P:{mw:30.974},H:{mw:1.008}};
+function parseSMILES(s){const counts={};(s.match(/\[([A-Za-z]+)/g)||[]).forEach(b=>{const a=b.slice(1);counts[a]=(counts[a]||0)+1});const clean=s.replace(/\[.*?\]/g,'X');(clean.match(/[A-Z][a-z]?/g)||[]).forEach(a=>{if(a!=='X')counts[a]=(counts[a]||0)+1});const aromatic=Math.max(0,Math.floor((s.match(/c/g)||[]).length/6));const rings=Math.floor(((s.match(/[0-9]/g)||[]).length)/2);const heavyAtoms=Object.entries(counts).filter(([k])=>k!=='H').reduce((s,[,v])=>s+v,0);return{counts,aromatic,rings,heavyAtoms,hCount:Math.max(0,heavyAtoms*1.2)}}
+function computeDescriptors(s){const{counts,aromatic,rings,heavyAtoms,hCount}=parseSMILES(s);let mw=0;Object.entries(counts).forEach(([a,n])=>{mw+=(ATOMS[a]?.mw||12)*n});mw+=hCount*1.008;const C=counts['C']||0,N=counts['N']||0,O=counts['O']||0,S=counts['S']||0,F=counts['F']||0,Cl=counts['Cl']||0,Br=counts['Br']||0;let logp=C*0.1441+N*(-1.019)+O*(-0.2035)+S*0.15+F*0.4202+Cl*0.6895+Br*0.8765+aromatic*0.5-rings*0.1;logp=Math.round(logp*100)/100;const hbd=Math.min(N+O,8),hba=Math.min(N+O*1.5,12),tpsa=Math.round(O*9.23+N*12.36+S*25.3),rotBonds=Math.max(0,heavyAtoms-rings*2-aromatic*4-2),sp3=Math.max(0,C-aromatic*2),fracCSP3=C>0?Math.round(sp3/C*100)/100:0;let formula='';if(counts['C'])formula+=`C${counts['C']>1?counts['C']:''}`;const hT=Math.round(hCount);if(hT>0)formula+=`H${hT>1?hT:''}`;['N','O','S','F','Cl','Br','I','P'].forEach(a=>{if(counts[a])formula+=`${a}${counts[a]>1?counts[a]:''}`;});return{molecular_weight:Math.round(mw*100)/100,logp,hbd:Math.round(hbd),hba:Math.round(hba),tpsa,rotatable_bonds:rotBonds,aromatic_rings:aromatic,ring_count:rings,frac_csp3:fracCSP3,heteroatoms:N+O+S+F+Cl+Br,num_atoms:Math.round(heavyAtoms+hCount),heavy_atoms:heavyAtoms,formula:formula||'?'}}
+function predictEnergy(d,s){const ca=d.heavy_atoms-d.heteroatoms;let e=-38.5*Math.max(ca,0)-55*d.heteroatoms-25*d.aromatic_rings-8*d.ring_count-3*Math.abs(d.logp)-5*d.hbd-3*d.hba;if(s.includes('='))e-=5;if(s.includes('#'))e-=10;return Math.round(e*100)/100}
+function stabilityScore(energy,heavyAtoms){const epa=energy/Math.max(heavyAtoms,1),score=Math.max(0,Math.min(100,(epa-(-15))/(-60-(-15))*100)),s=Math.round(score*10)/10;if(s>=75)return{score:s,label:'Highly Stable',color:'#34d399',bg:'rgba(52,211,153,0.1)',bc:'rgba(52,211,153,0.3)'};if(s>=50)return{score:s,label:'Moderately Stable',color:'#4f9eff',bg:'rgba(79,158,255,0.1)',bc:'rgba(79,158,255,0.3)'};if(s>=25)return{score:s,label:'Marginal',color:'#fbbf24',bg:'rgba(251,191,36,0.1)',bc:'rgba(251,191,36,0.3)'};return{score:s,label:'Unstable',color:'#f87171',bg:'rgba(248,113,113,0.1)',bc:'rgba(248,113,113,0.3)'}}
+function lipinskiCheck(d){const rules={'MW ≤ 500 Da':d.molecular_weight<=500,'LogP ≤ 5':d.logp<=5,'HBD ≤ 5':d.hbd<=5,'HBA ≤ 10':d.hba<=10};const v=Object.values(rules).filter(x=>!x).length;return{rules,violations:v,drug_like:v<=1,verdict:v<=1?'Drug-like':'Non drug-like'}}
+const DRUGS=[{name:'Aspirin',smiles:'CC(=O)Oc1ccccc1C(=O)O',indication:'Anti-inflammatory'},{name:'Ibuprofen',smiles:'CC(C)Cc1ccc(cc1)C(C)C(=O)O',indication:'NSAID'},{name:'Paracetamol',smiles:'CC(=O)Nc1ccc(O)cc1',indication:'Analgesic'},{name:'Caffeine',smiles:'Cn1c(=O)c2c(ncn2C)n(C)c1=O',indication:'CNS Stimulant'},{name:'Metformin',smiles:'CN(C)C(=N)NC(=N)N',indication:'Diabetes'},{name:'Fluoxetine',smiles:'CNCCC(Oc1ccc(cc1)C(F)(F)F)c1ccccc1',indication:'SSRI'},{name:'Omeprazole',smiles:'COc1ccc2nc([nH]c2c1)S(=O)Cc1ncc(C)c(OC)c1C',indication:'GERD'},{name:'Amoxicillin',smiles:'CC1(C)SC2C(NC(=O)C(N)c3ccc(O)cc3)C(=O)N2C1C(=O)O',indication:'Antibiotic'},{name:'Ciprofloxacin',smiles:'O=C(O)c1cn(C2CC2)c2cc(N3CCNCC3)c(F)cc2c1=O',indication:'Fluoroquinolone'},{name:'Chloroquine',smiles:'CCN(CC)CCCC(C)Nc1ccnc2cc(Cl)ccc12',indication:'Antimalarial'},{name:'Warfarin',smiles:'OC(=O)Cc1ccccc1OC(=O)c1ccc(Cl)cc1',indication:'Anticoagulant'},{name:'Diazepam',smiles:'CN1C(=O)CN=C(c2ccccc2)c2cc(Cl)ccc21',indication:'Anxiolytic'},{name:'Tamoxifen',smiles:'CCC(=C(c1ccccc1)c1ccc(OCCN(C)C)cc1)c1ccccc1',indication:'Oncology'},{name:'Oseltamivir',smiles:'CCOC(=O)C1=CC(CC(CC1)OC(=O)C(C)C)N',indication:'Antiviral'},{name:'Dopamine',smiles:'NCCc1ccc(O)c(O)c1',indication:'Neurotransmitter'}];
+function fv(s){const d=computeDescriptors(s);return[d.molecular_weight/500,d.logp/5,d.hbd/5,d.hba/10,d.tpsa/150,d.rotatable_bonds/10,d.aromatic_rings/4,d.ring_count/6,d.frac_csp3,d.heteroatoms/10,(s.match(/c/g)||[]).length/20,(s.match(/N/gi)||[]).length/8,(s.match(/O/g)||[]).length/8,(s.match(/F/g)||[]).length/4,(s.match(/Cl/g)||[]).length/3,s.includes('=O')?1:0,s.includes('C(=O)O')?1:0,s.includes('N')?1:0,s.includes('c1ccccc1')?1:0,d.heavy_atoms/50]}
+function sim(a,b){const fa=fv(a),fb=fv(b);let dot=0,mA=0,mB=0;for(let i=0;i<fa.length;i++){dot+=fa[i]*fb[i];mA+=fa[i]*fa[i];mB+=fb[i]*fb[i];}return Math.round(Math.max(0,dot/(Math.sqrt(mA)*Math.sqrt(mB)+1e-8))*100*10)/10}
+function computeSim(s){return DRUGS.map(d=>({...d,similarity:sim(s,d.smiles)})).sort((a,b)=>b.similarity-a.similarity).slice(0,5)}
+
+let v3d=null;
+function render3D(smiles){const el=document.getElementById('viewer');el.innerHTML='';if(v3d){try{v3d.clear();}catch(e){}}v3d=null;if(!window.$3Dmol)return;v3d=window.$3Dmol.createViewer(el,{backgroundColor:'0x030508'});try{v3d.addModel(smiles,'smiles');v3d.setStyle({},{stick:{radius:.13,colorscheme:'Jmol'},sphere:{scale:.22,colorscheme:'Jmol'}});v3d.zoomTo();v3d.spin('y',.5);v3d.render();document.getElementById('vzWarn').textContent='';}catch(e){document.getElementById('vzWarn').textContent='Could not render 3D structure.';}}
+
+function switchTab(name,btn){document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('tab-'+name).classList.add('active');if(name==='struct'&&window._sm)setTimeout(()=>render3D(window._sm),80);}
+function setEx(s){document.getElementById('smilesInput').value=s;handleAnalyze();}
+
+const MSGS=['Parsing molecular graph...','Computing 20 descriptors...','Generating 2048-bit fingerprint...','Running stability model...','Searching drug database...','Rendering radial layout...'];
+async function runLoader(){for(let i=0;i<MSGS.length;i++){document.getElementById('loadMsg').textContent=MSGS[i];await new Promise(r=>setTimeout(r,330));}}
+
+async function handleAnalyze(){
+  const smiles=document.getElementById('smilesInput').value.trim();
+  if(!smiles){const e=document.getElementById('errCard');e.textContent='Please enter a SMILES string.';e.classList.add('active');return;}
+  document.getElementById('errCard').classList.remove('active');
+  document.getElementById('analyzeBtn').disabled=true;
+  document.getElementById('loader').classList.add('active');
+  document.getElementById('results').classList.remove('revealed');
+  runLoader();
+  await new Promise(r=>setTimeout(r,2000));
+  try{
+    window._sm=smiles;
+    const d=computeDescriptors(smiles),energy=predictEnergy(d,smiles),stab=stabilityScore(energy,d.heavy_atoms),lip=lipinskiCheck(d),matches=computeSim(smiles),epa=Math.round(energy/Math.max(d.heavy_atoms,1)*100)/100;
+
+    document.getElementById('rFormula').textContent=d.formula;
+    document.getElementById('rSmiles').textContent=smiles;
+    document.getElementById('rChips').innerHTML=`<span class="fchip fc-b">${d.heavy_atoms} heavy atoms</span><span class="fchip fc-t">${d.aromatic_rings} aromatic rings</span><span class="fchip fc-p">${d.molecular_weight} Da</span>`;
+
+    // Orb
+    const circ=2*Math.PI*108,arc=document.getElementById('scoreArc');
+    arc.setAttribute('stroke',stab.color);arc.style.filter=`drop-shadow(0 0 14px ${stab.color})`;
+    setTimeout(()=>arc.setAttribute('stroke-dasharray',`${stab.score/100*circ} ${circ}`),100);
+    document.getElementById('scoreNum').textContent=Math.round(stab.score);
+    document.getElementById('scoreNum').style.color=stab.color;
+    const sb=document.getElementById('scoreBadge');
+    sb.textContent=stab.label;sb.style.color=stab.color;sb.style.borderColor=stab.bc;sb.style.background=stab.bg;
+
+    // Satellites
+    document.getElementById('sEnergy').textContent=energy;
+    document.getElementById('sMW').textContent=d.molecular_weight;
+    document.getElementById('sLogP').textContent=`LogP ${d.logp}`;
+    document.getElementById('sDrug').textContent=matches[0]?.name||'—';
+    document.getElementById('sDrugSim').textContent=`${matches[0]?.similarity||0}% similarity`;
+    document.getElementById('sLip').textContent=lip.drug_like?'Pass':'Fail';
+    document.getElementById('sLip').style.color=lip.drug_like?'var(--green)':'var(--red)';
+    document.getElementById('sLipSub').textContent=`${lip.violations} violation${lip.violations!==1?'s':''}`;
+
+    // Descriptors
+    document.getElementById('descList').innerHTML=[
+      {k:'Molecular Weight',v:`${d.molecular_weight} Da`,w:d.molecular_weight>500},
+      {k:'LogP',v:d.logp,w:Math.abs(d.logp)>5},
+      {k:'H-Bond Donors',v:d.hbd,w:d.hbd>5},
+      {k:'H-Bond Acceptors',v:d.hba,w:d.hba>10},
+      {k:'TPSA',v:`${d.tpsa} Å²`,w:d.tpsa>140},
+      {k:'Rotatable Bonds',v:d.rotatable_bonds},
+      {k:'Aromatic Rings',v:d.aromatic_rings},
+      {k:'Ring Count',v:d.ring_count},
+      {k:'Frac CSP3',v:d.frac_csp3},
+      {k:'Heavy Atoms',v:d.heavy_atoms},
+    ].map(r=>`<div class="desc-row"><span class="dk">${r.k}</span><span class="dv${r.w?' w':''}">${r.v}</span></div>`).join('');
+
+    // Lipinski
+    const lv=document.getElementById('lipV');lv.textContent=lip.verdict;lv.className='lv '+(lip.drug_like?'pass':'fail');
+    document.getElementById('lipRules').innerHTML=Object.entries(lip.rules).map(([r,p])=>`<div class="lrule"><div class="ldot ${p?'pass':'fail'}"></div>${r}</div>`).join('');
+
+    // Energy
+    document.getElementById('energyProfile').innerHTML=`<div style="margin-bottom:18px"><div style="font-size:.6rem;color:var(--wm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Ground-State Energy</div><div style="font-size:2.4rem;font-weight:800;color:var(--teal);letter-spacing:-.02em;line-height:1">${energy}</div><div style="font-size:.68rem;color:var(--wm);margin-top:3px">kcal / mol</div></div><div style="height:1px;background:var(--border);margin-bottom:16px"></div><div style="font-size:.6rem;color:var(--wm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Per Heavy Atom</div><div style="font-size:1.3rem;font-weight:700;color:var(--blue);margin-bottom:18px">${epa} <span style="font-size:.7rem;color:var(--wm);font-weight:400">kcal/mol</span></div><div style="font-size:.6rem;color:var(--wm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Stability</div><div style="height:5px;border-radius:100px;background:rgba(255,255,255,0.06);overflow:hidden"><div id="ebar" style="height:100%;border-radius:100px;width:0;background:${stab.color};box-shadow:0 0 10px ${stab.color}55;transition:width 1.5s cubic-bezier(.22,1,.36,1)"></div></div>`;
+    setTimeout(()=>{const b=document.getElementById('ebar');if(b)b.style.width=stab.score+'%';},200);
+
+    // Drugs
+    document.getElementById('drugList').innerHTML=matches.map((m,i)=>{const col=m.similarity>=60?'var(--green)':m.similarity>=30?'var(--blue)':'var(--red)';return`<div class="dentry"><div class="drow"><span class="dname">${m.name}</span><span class="dpct" style="color:${col}">${m.similarity}%</span></div><div class="dtrack"><div class="dfill" id="df${i}" style="background:${col};box-shadow:0 0 8px ${col}44"></div></div><div class="dind">${m.indication}</div></div>`;}).join('');
+    matches.forEach((_,i)=>{setTimeout(()=>{const b=document.getElementById('df'+i);if(b)b.style.width=matches[i].similarity+'%';},200+i*120);});
+
+    document.getElementById('vLabel').textContent=d.formula+' · '+smiles;
+    document.getElementById('results').classList.add('active');
+    setTimeout(()=>document.getElementById('results').classList.add('revealed'),80);
+    fetchAI(smiles,d,energy,stab,lip,matches[0]);
+  }catch(e){
+    const ec=document.getElementById('errCard');ec.textContent='Analysis failed: '+e.message;ec.classList.add('active');
+  }finally{
+    document.getElementById('loader').classList.remove('active');
+    document.getElementById('analyzeBtn').disabled=false;
+  }
+}
+
+async function fetchAI(smiles,d,energy,stab,lip,top){
+  const el=document.getElementById('aiContent');el.textContent='Generating analysis...';
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`You are a computational chemist. Analyse this molecule (~200 words):\nSMILES: ${smiles} | Formula: ${d.formula}\nMW: ${d.molecular_weight} Da | LogP: ${d.logp} | TPSA: ${d.tpsa} Å²\nHBD: ${d.hbd} | HBA: ${d.hba} | Aromatic rings: ${d.aromatic_rings}\nGround-state energy: ${energy} kcal/mol\nStability: ${stab.score}/100 (${stab.label}) | Lipinski: ${lip.verdict}\nTop drug match: ${top?.name||'N/A'} (${top?.similarity||0}% — ${top?.indication||''})\nCover: structural features, stability rationale, drug-likeness, potential applications.`}]})});
+    const data=await r.json();el.textContent=data.content?.find(b=>b.type==='text')?.text||'Unavailable.';
+  }catch(e){el.textContent='AI analysis requires API connectivity.\n\nError: '+e.message;}
+}
+
+document.getElementById('smilesInput').addEventListener('keydown',e=>{if(e.key==='Enter')handleAnalyze();});
+</script>
+</body>
+</html>

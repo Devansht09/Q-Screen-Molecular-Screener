@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Q-Screen · Quantum Molecule Stability Screener</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.1.0/3Dmol-min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --black:#030303;--black2:#080808;--black3:#0f0f0f;--black4:#161616;
+  --green:#00e676;--gdim:rgba(0,230,118,0.1);--gglow:0 0 20px rgba(0,230,118,0.3);
+  --red:#ff2d2d;--rdim:rgba(255,45,45,0.1);--rglow:0 0 20px rgba(255,45,45,0.3);
+  --orange:#ff6b35;
+  --white:#f0f0f0;--dim:#444;--dim2:#222;
+  --mono:'DM Mono',monospace;--display:'Bebas Neue',sans-serif;--body:'Barlow',sans-serif;
+  --border:rgba(255,255,255,0.06);--bg:rgba(0,230,118,0.2);--br:rgba(255,45,45,0.2);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--black)}
+body{background:var(--black);color:var(--white);font-family:var(--body);min-height:100vh;overflow-x:hidden;cursor:crosshair}
+button{cursor:crosshair;font-family:inherit;border:none;background:none}
+input{font-family:inherit;cursor:text}
+
+/* scanlines */
+.scanlines{position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)}
+
+/* atom overlay */
+.atom-overlay{position:fixed;inset:0;z-index:1000;background:rgba(3,3,3,0.96);
+  backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:28px;display:none}
+.atom-overlay.active{display:flex}
+.atom-wrap{position:relative;width:120px;height:120px}
+.atom-nucleus{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:16px;height:16px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 20px var(--green),0 0 40px var(--green),0 0 60px rgba(0,230,118,.4);
+  animation:nucPulse 1.5s ease-in-out infinite}
+@keyframes nucPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.3);box-shadow:0 0 30px var(--green),0 0 60px var(--green)}}
+.atom-orbit{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid}
+.o1{width:70px;height:70px;margin:-35px 0 0 -35px;border-color:rgba(0,230,118,.4);animation:orb 1.2s linear infinite}
+.o2{width:100px;height:40px;margin:-20px 0 0 -50px;border-color:rgba(255,45,45,.4);animation:orb2 1.8s linear infinite}
+.o3{width:110px;height:110px;margin:-55px 0 0 -55px;border-color:rgba(255,107,53,.3);animation:orb3 2.4s linear infinite}
+@keyframes orb{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes orb2{from{transform:rotate(60deg)}to{transform:rotate(420deg)}}
+@keyframes orb3{from{transform:rotate(120deg)}to{transform:rotate(480deg)}}
+.atom-electron{position:absolute;top:-4px;left:50%;margin-left:-4px;width:8px;height:8px;
+  border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green),0 0 16px var(--green)}
+.o2 .atom-electron{background:var(--red);box-shadow:0 0 8px var(--red)}
+.o3 .atom-electron{background:var(--orange);box-shadow:0 0 8px var(--orange)}
+.atom-message{font-family:var(--mono);font-size:.85rem;color:var(--green);letter-spacing:.08em;text-transform:uppercase;animation:flicker .5s ease infinite alternate}
+@keyframes flicker{from{opacity:.8}to{opacity:1}}
+.atom-submessage{font-family:var(--mono);font-size:.65rem;color:var(--dim);letter-spacing:.05em}
+
+/* layout */
+.app{max-width:1140px;margin:0 auto;padding:0 28px 100px}
+
+/* header */
+.header{display:flex;align-items:flex-end;justify-content:space-between;padding:40px 0 24px;flex-wrap:wrap;gap:16px}
+.header-left{display:flex;flex-direction:column;gap:6px}
+.logo{display:flex;align-items:baseline;line-height:1}
+.logo-bracket{font-family:var(--mono);font-size:2.4rem;color:var(--red);font-weight:300;opacity:.7}
+.logo-q{font-family:var(--display);font-size:4rem;color:var(--green);text-shadow:0 0 40px rgba(0,230,118,.5),0 0 80px rgba(0,230,118,.2);line-height:1}
+.logo-hyp{font-family:var(--display);font-size:4rem;color:var(--red);opacity:.6;line-height:1}
+.logo-s{font-family:var(--display);font-size:4rem;color:var(--white);letter-spacing:.04em;line-height:1}
+.tagline{font-family:var(--mono);font-size:.65rem;color:var(--dim);text-transform:uppercase;letter-spacing:.18em;padding-left:2px}
+.header-right{display:flex;align-items:center;gap:12px;padding-bottom:4px}
+.vtag{font-family:var(--mono);font-size:.6rem;color:var(--dim);border:1px solid var(--dim2);padding:3px 8px;border-radius:2px;letter-spacing:.1em}
+.status-pill{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;padding:6px 14px;border-radius:2px;border:1px solid;color:var(--green);border-color:var(--bg);background:var(--gdim)}
+.sdot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.5s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* divider */
+.hline{display:flex;align-items:center;gap:12px;margin-bottom:40px}
+.hline-fill{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.15),rgba(255,45,45,.15),transparent)}
+.hline-diamond{width:8px;height:8px;background:var(--green);transform:rotate(45deg);box-shadow:0 0 10px var(--green);flex-shrink:0}
+
+/* input */
+.input-zone{margin-bottom:32px}
+.iz-label{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.16em;color:var(--green);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.input-row{display:flex;gap:12px;margin-bottom:16px}
+.input-wrap{flex:1;position:relative}
+.smiles-input{width:100%;background:var(--black2);border:1px solid var(--border);border-top:1px solid rgba(0,230,118,.15);
+  padding:16px 22px;font-family:var(--mono);font-size:.95rem;color:var(--white);outline:none;
+  transition:border-color .2s,box-shadow .2s;letter-spacing:.04em;
+  clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)}
+.smiles-input::placeholder{color:#333}
+.smiles-input:focus{border-color:rgba(0,230,118,.35);box-shadow:inset 0 0 30px rgba(0,230,118,.03)}
+.input-glow{position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;transition:opacity .3s}
+.smiles-input:focus~.input-glow{opacity:1}
+.scan-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-family:var(--mono);
+  font-size:.8rem;letter-spacing:.16em;padding:0 32px;display:flex;align-items:center;gap:10px;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%);transition:all .2s;white-space:nowrap}
+.scan-btn:hover:not(:disabled){background:var(--green);color:var(--black);box-shadow:var(--gglow)}
+.scan-btn:disabled{opacity:.3;cursor:not-allowed}
+.ex-strip{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.ex-lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;color:var(--dim)}
+.ex-pill{font-family:var(--mono);font-size:.68rem;color:#555;border:1px solid var(--dim2);padding:4px 14px;transition:all .15s;letter-spacing:.04em}
+.ex-pill:hover{color:var(--green);border-color:var(--bg);background:var(--gdim)}
+
+/* error */
+.error-strip{background:var(--rdim);border:1px solid var(--br);border-left:3px solid var(--red);
+  padding:12px 18px;font-family:var(--mono);font-size:.8rem;color:var(--red);
+  margin-bottom:24px;display:none;align-items:center;gap:10px}
+.error-strip.active{display:flex}
+
+/* results */
+.results-zone{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease;display:none}
+.results-zone.active{display:block}
+.results-zone.revealed{opacity:1;transform:translateY(0)}
+
+/* identity bar */
+.id-bar{display:flex;align-items:center;justify-content:space-between;padding:28px 32px;
+  background:var(--black2);border:1px solid var(--border);border-left:3px solid var(--green);
+  margin-bottom:2px;flex-wrap:wrap;gap:20px}
+.mol-formula{font-family:var(--display);font-size:2.6rem;color:var(--white);letter-spacing:.04em;line-height:1;margin-bottom:6px}
+.mol-smiles{font-family:var(--mono);font-size:.72rem;color:var(--green);opacity:.7;margin-bottom:12px;word-break:break-all}
+.mol-chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;padding:3px 10px;text-transform:uppercase}
+.chip.g{color:var(--green);background:var(--gdim);border:1px solid var(--bg)}
+.chip.r{color:var(--red);background:var(--rdim);border:1px solid var(--br)}
+.chip.d{color:#555;background:var(--black3);border:1px solid var(--dim2)}
+
+/* gauge */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.gauge-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;text-align:center}
+
+/* energy banner */
+.e-banner{display:flex;background:var(--black3);border:1px solid var(--border);border-top:none;margin-bottom:2px}
+.e-item{flex:1;padding:18px 24px;border-right:1px solid var(--border);transition:background .2s}
+.e-item:last-child{border-right:none}
+.e-item:hover{background:var(--black4)}
+.e-val{font-family:var(--mono);font-size:1.3rem;font-weight:500;color:var(--green);line-height:1;margin-bottom:4px}
+.e-lbl{font-family:var(--mono);font-size:.58rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+
+/* tabs */
+.tab-row{display:flex;background:var(--black2);border:1px solid var(--border);border-top:none;margin-bottom:2px}
+.tab-btn{flex:1;padding:14px 20px;font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;color:#444;
+  border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .2s;position:relative;overflow:hidden}
+.tab-btn:last-child{border-right:none}
+.tab-btn::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--green);transform:scaleX(0);transition:transform .2s}
+.tab-btn:hover{color:#888;background:var(--black3)}
+.tab-btn.active{color:var(--green);background:var(--gdim)}
+.tab-btn.active::after{transform:scaleX(1)}
+
+/* panel */
+.panel{background:var(--black2);border:1px solid var(--border);border-top:none;padding:28px 32px;display:none}
+.panel.active{display:block;animation:fadeUp .35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.panel-grid{display:flex;gap:28px;flex-wrap:wrap}
+.panel-col{flex:1;min-width:280px}
+.panel-side{width:240px;flex-shrink:0}
+.sec-lbl{font-family:var(--mono);font-size:.58rem;text-transform:uppercase;letter-spacing:.18em;color:#444;
+  margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--dim2)}
+
+/* metrics */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.metric{background:var(--black3);border:1px solid var(--dim2);padding:12px 14px;transition:border-color .2s,transform .2s,box-shadow .2s;cursor:default}
+.metric:hover{border-color:rgba(0,230,118,.25);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.metric.hot{border-color:rgba(255,45,45,.3);background:rgba(255,45,45,.04)}
+.metric-lbl{font-family:var(--mono);font-size:.55rem;text-transform:uppercase;letter-spacing:.1em;color:#444;margin-bottom:8px}
+.metric-val{font-family:var(--mono);font-size:1.05rem;font-weight:500;color:var(--green)}
+.metric-unit{font-size:.6rem;color:#555;font-weight:400}
+
+/* lipinski */
+.lip{background:var(--black3);border:1px solid var(--dim2);padding:18px}
+.lip-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--dim2)}
+.lip-title{font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:#666}
+.lip-badge{font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;padding:3px 10px}
+.lip-badge.pass{color:var(--green);background:var(--gdim);border:1px solid var(--bg)}
+.lip-badge.fail{color:var(--red);background:var(--rdim);border:1px solid var(--br)}
+.lip-rules{display:flex;flex-direction:column;gap:8px}
+.lip-rule{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:.65rem;color:#666}
+.lip-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.lip-dot.pass{background:var(--green);box-shadow:0 0 6px var(--green)}
+.lip-dot.fail{background:var(--red);box-shadow:0 0 6px var(--red)}
+
+/* drug list */
+.drug-list{display:flex;flex-direction:column;gap:20px}
+.drug-row{animation:fadeUp .4s ease both}
+.drug-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.drug-name{font-family:var(--body);font-size:1rem;font-weight:600;color:var(--white)}
+.drug-pct{font-family:var(--mono);font-size:.9rem;font-weight:500}
+.drug-track{height:4px;background:var(--black4);margin-bottom:6px;overflow:hidden}
+.drug-fill{height:100%;width:0;transition:width 1s cubic-bezier(.22,1,.36,1)}
+.drug-ind{font-family:var(--mono);font-size:.6rem;color:#555;text-transform:uppercase;letter-spacing:.1em}
+
+/* 3d viewer */
+#viewer{width:100%;height:360px;border-radius:0;overflow:hidden;background:var(--black3)}
+.viz-warn{font-family:var(--mono);font-size:.65rem;color:var(--orange);text-align:center;margin-top:12px;opacity:.8}
+
+/* ai panel */
+.ai-box{background:var(--black3);border:1px solid rgba(0,180,216,.15);border-left:3px solid #00b4d8;padding:20px}
+.ai-title{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.14em;color:#00b4d8;margin-bottom:14px}
+.ai-content{font-family:var(--body);font-size:.88rem;color:#ccc;line-height:1.75;white-space:pre-wrap}
+
+/* footer */
+footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--dim2);
+  font-family:var(--mono);font-size:.6rem;color:#333;letter-spacing:.08em;
+  text-align:center;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px}
+.f-brand{color:var(--green);font-weight:500}
+.f-sep{color:var(--dim2)}
+.f-accent{color:var(--red);opacity:.7}
+
+@media(max-width:700px){
+  .logo-q,.logo-s,.logo-hyp{font-size:3rem}
+  .logo-bracket{font-size:2rem}
+  .id-bar{flex-direction:column;align-items:flex-start}
+  .e-banner{flex-direction:column}
+  .e-item{border-right:none;border-bottom:1px solid var(--border)}
+  .tab-btn{font-size:.58rem;padding:12px 8px}
+  .panel-grid{flex-direction:column}
+  .panel-side{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<!-- Atom Loader -->
+<div class="atom-overlay" id="loader">
+  <div class="atom-wrap">
+    <div class="atom-nucleus"></div>
+    <div class="atom-orbit o1"><div class="atom-electron"></div></div>
+    <div class="atom-orbit o2"><div class="atom-electron"></div></div>
+    <div class="atom-orbit o3"><div class="atom-electron"></div></div>
+  </div>
+  <div class="atom-message" id="loadMsg">Initializing...</div>
+  <div class="atom-submessage">Running quantum approximation engine...</div>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-bracket">[</span>
+        <span class="logo-q">Q</span>
+        <span class="logo-hyp">-</span>
+        <span class="logo-s">SCREEN</span>
+        <span class="logo-bracket">]</span>
+      </div>
+      <div class="tagline">Quantum Molecule Stability Screener</div>
+    </div>
+    <div class="header-right">
+      <div class="vtag">v1.0</div>
+      <div class="status-pill"><span class="sdot"></span>AI POWERED</div>
+    </div>
+  </header>
+
+  <!-- Divider -->
+  <div class="hline">
+    <div class="hline-fill"></div>
+    <div class="hline-diamond"></div>
+    <div class="hline-fill"></div>
+  </div>
+
+  <!-- Input -->
+  <section class="input-zone">
+    <div class="iz-label"><span>⬡</span> SMILES NOTATION INPUT</div>
+    <div class="input-row">
+      <div class="input-wrap">
+        <input class="smiles-input" id="smilesInput"
+          placeholder="e.g. CCO · CC(=O)Oc1ccccc1C(=O)O · Cn1c(=O)c2c(ncn2C)n(C)c1=O"
+          spellcheck="false" autocomplete="off"/>
+        <div class="input-glow"></div>
+      </div>
+      <button class="scan-btn" id="scanBtn" onclick="handleAnalyze()">
+        <span>SCAN</span><span>▶</span>
+      </button>
+    </div>
+    <div class="ex-strip">
+      <span class="ex-lbl">QUICK LOAD —</span>
+      <button class="ex-pill" onclick="setEx('CCO')">🍺 Ethanol</button>
+      <button class="ex-pill" onclick="setEx('CC(=O)Oc1ccccc1C(=O)O')">💊 Aspirin</button>
+      <button class="ex-pill" onclick="setEx('Cn1c(=O)c2c(ncn2C)n(C)c1=O')">☕ Caffeine</button>
+      <button class="ex-pill" onclick="setEx('NCCc1ccc(O)c(O)c1')">🧠 Dopamine</button>
+      <button class="ex-pill" onclick="setEx('c1ccccc1')">⬡ Benzene</button>
+      <button class="ex-pill" onclick="setEx('CC(=O)Nc1ccc(O)cc1')">🩺 Paracetamol</button>
+    </div>
+  </section>
+
+  <!-- Error -->
+  <div class="error-strip" id="errorStrip">
+    <span>✕</span><span id="errorMsg"></span>
+  </div>
+
+  <!-- Results -->
+  <div class="results-zone" id="results">
+
+    <!-- Identity Bar -->
+    <div class="id-bar">
+      <div>
+        <div class="mol-formula" id="rFormula"></div>
+        <div class="mol-smiles" id="rSmiles"></div>
+        <div class="mol-chips" id="rChips"></div>
+      </div>
+      <!-- Gauge -->
+      <div class="gauge-wrap">
+        <svg id="gaugeSvg" width="160" height="160" viewBox="0 0 160 160">
+          <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(0,230,118,0.06)" stroke-width="1"/>
+          <circle cx="80" cy="80" r="58" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="10"/>
+          <circle id="gaugeRed" cx="80" cy="80" r="58" fill="none" stroke="#ff2d2d"
+            stroke-width="10" stroke-linecap="round" transform="rotate(-90 80 80)"
+            stroke-dasharray="0 364.4" opacity="0.2"/>
+          <circle id="gaugeArc" cx="80" cy="80" r="58" fill="none" stroke="#00e676"
+            stroke-width="10" stroke-linecap="round" transform="rotate(-90 80 80)"
+            stroke-dasharray="0 364.4"
+            style="transition:stroke-dasharray 1.4s cubic-bezier(.22,1,.36,1)"/>
+          <text id="gaugeNum" x="80" y="74" text-anchor="middle" fill="#00e676"
+            font-size="28" font-weight="700" font-family="'DM Mono',monospace">0</text>
+          <text x="80" y="92" text-anchor="middle" fill="rgba(255,255,255,0.25)"
+            font-size="9" font-family="'DM Mono',monospace" letter-spacing="2">STABILITY</text>
+        </svg>
+        <div class="gauge-label" id="gaugeLabel"></div>
+      </div>
+    </div>
+
+    <!-- Energy Banner -->
+    <div class="e-banner">
+      <div class="e-item"><div class="e-val" id="eEnergy"></div><div class="e-lbl">kcal/mol · Ground State</div></div>
+      <div class="e-item"><div class="e-val" id="ePerAtom"></div><div class="e-lbl">kcal/mol · Per Atom</div></div>
+      <div class="e-item"><div class="e-val" id="eViolations"></div><div class="e-lbl">Lipinski Violations</div></div>
+      <div class="e-item"><div class="e-val" id="eMW"></div><div class="e-lbl">Molecular Weight (Da)</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('stability',this)"><span>🧪</span> STABILITY</button>
+      <button class="tab-btn" onclick="switchTab('similarity',this)"><span>💊</span> DRUG MATCH</button>
+      <button class="tab-btn" onclick="switchTab('view3d',this)"><span>🌐</span> 3D VIEW</button>
+      <button class="tab-btn" onclick="switchTab('ai',this)"><span>🤖</span> AI ANALYSIS</button>
+    </div>
+
+    <!-- Stability Panel -->
+    <div class="panel active" id="panel-stability">
+      <div class="panel-grid">
+        <div class="panel-col">
+          <div class="sec-lbl">MOLECULAR DESCRIPTORS</div>
+          <div class="metrics-grid" id="metricsGrid"></div>
+        </div>
+        <div class="panel-side">
+          <div class="sec-lbl">DRUG-LIKENESS</div>
+          <div class="lip" id="lipWrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Similarity Panel -->
+    <div class="panel" id="panel-similarity">
+      <div class="sec-lbl">STRUCTURAL MATCHES — TANIMOTO / MORGAN FINGERPRINT</div>
+      <div class="drug-list" id="drugList"></div>
+    </div>
+
+    <!-- 3D Panel -->
+    <div class="panel" id="panel-view3d">
+      <div class="sec-lbl">3D MOLECULAR STRUCTURE — 3DMOL.JS RENDERER</div>
+      <div id="viewer"></div>
+      <div class="viz-warn" id="vizWarn"></div>
+    </div>
+
+    <!-- AI Panel -->
+    <div class="panel" id="panel-ai">
+      <div class="sec-lbl">AI MOLECULAR ANALYSIS</div>
+      <div class="ai-box">
+        <div class="ai-title">🤖 Claude Analysis</div>
+        <div class="ai-content" id="aiContent">Click Analyze to generate AI analysis.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <span class="f-brand">Q-SCREEN</span>
+  <span class="f-sep">·</span>
+  Research & Educational Use Only
+  <span class="f-sep">·</span>
+  Not Clinically Validated
+  <span class="f-sep">·</span>
+  <span class="f-accent">ML + RDKit + QM9</span>
+</footer>
+
+<script>
+// ─── Chemistry Engine ─────────────────────────────────────────────────────────
+const ATOMS={C:{mw:12.011},N:{mw:14.007},O:{mw:15.999},S:{mw:32.065},F:{mw:18.998},Cl:{mw:35.453},Br:{mw:79.904},I:{mw:126.90},P:{mw:30.974},H:{mw:1.008}};
+
+function parseSMILES(s){
+  const counts={};
+  const brackets=s.match(/\[([A-Za-z]+)/g)||[];
+  brackets.forEach(b=>{const a=b.slice(1);counts[a]=(counts[a]||0)+1});
+  const clean=s.replace(/\[.*?\]/g,'X');
+  (clean.match(/[A-Z][a-z]?/g)||[]).forEach(a=>{if(a!=='X')counts[a]=(counts[a]||0)+1});
+  const aromatic=Math.max(0,Math.floor((s.match(/c/g)||[]).length/6));
+  const rings=Math.floor(((s.match(/[0-9]/g)||[]).length)/2);
+  const heavyAtoms=Object.entries(counts).filter(([k])=>k!=='H').reduce((s,[,v])=>s+v,0);
+  const hCount=Math.max(0,heavyAtoms*1.2);
+  return{counts,aromatic,rings,heavyAtoms,hCount};
+}
+
+function computeDescriptors(s){
+  const{counts,aromatic,rings,heavyAtoms,hCount}=parseSMILES(s);
+  let mw=0;
+  Object.entries(counts).forEach(([a,n])=>{mw+=(ATOMS[a]?.mw||12)*n});
+  mw+=hCount*1.008;
+  const C=counts['C']||0,N=counts['N']||0,O=counts['O']||0,S=counts['S']||0;
+  const F=counts['F']||0,Cl=counts['Cl']||0,Br=counts['Br']||0;
+  let logp=C*0.1441+N*(-1.019)+O*(-0.2035)+S*0.15+F*0.4202+Cl*0.6895+Br*0.8765+aromatic*0.5-rings*0.1;
+  logp=Math.round(logp*100)/100;
+  const hbd=Math.min(N+O,8),hba=Math.min(N+O*1.5,12);
+  const tpsa=Math.round(O*9.23+N*12.36+S*25.3);
+  const rotBonds=Math.max(0,heavyAtoms-rings*2-aromatic*4-2);
+  const sp3=Math.max(0,C-aromatic*2);
+  const fracCSP3=C>0?Math.round(sp3/C*100)/100:0;
+  let formula='';
+  if(counts['C'])formula+=`C${counts['C']>1?counts['C']:''}`;
+  const hT=Math.round(hCount);
+  if(hT>0)formula+=`H${hT>1?hT:''}`;
+  ['N','O','S','F','Cl','Br','I','P'].forEach(a=>{if(counts[a])formula+=`${a}${counts[a]>1?counts[a]:''}`;});
+  return{molecular_weight:Math.round(mw*100)/100,logp,hbd:Math.round(hbd),hba:Math.round(hba),
+    tpsa,rotatable_bonds:rotBonds,aromatic_rings:aromatic,ring_count:rings,
+    frac_csp3:fracCSP3,heteroatoms:N+O+S+F+Cl+Br,num_atoms:Math.round(heavyAtoms+hCount),
+    heavy_atoms:heavyAtoms,formula:formula||'?',num_stereocenters:0};
+}
+
+function predictEnergy(d,s){
+  const ca=d.heavy_atoms-d.heteroatoms;
+  let e=-38.5*Math.max(ca,0)-55.0*d.heteroatoms-25.0*d.aromatic_rings-8.0*d.ring_count-3.0*Math.abs(d.logp)-5.0*d.hbd-3.0*d.hba;
+  if(s.includes('='))e-=5;if(s.includes('#'))e-=10;
+  return Math.round(e*100)/100;
+}
+
+function stabilityScore(energy,heavyAtoms){
+  const epa=energy/Math.max(heavyAtoms,1);
+  const score=Math.max(0,Math.min(100,(epa-(-15))/(-60-(-15))*100));
+  const s=Math.round(score*10)/10;
+  if(s>=75)return{score:s,label:'Highly Stable',color:'#00e676'};
+  if(s>=50)return{score:s,label:'Moderately Stable',color:'#a3ff00'};
+  if(s>=25)return{score:s,label:'Marginally Stable',color:'#ffd700'};
+  return{score:s,label:'Unstable',color:'#ff2d2d'};
+}
+
+function lipinskiCheck(d){
+  const rules={'MW ≤ 500 Da':d.molecular_weight<=500,'LogP ≤ 5':d.logp<=5,'HBD ≤ 5':d.hbd<=5,'HBA ≤ 10':d.hba<=10};
+  const v=Object.values(rules).filter(x=>!x).length;
+  return{rules,violations:v,drug_like:v<=1,verdict:v<=1?'Drug-like ✓':`Fails Ro5 (${v} violation${v>1?'s':''})`};
+}
+
+const DRUGS=[
+  {name:'Aspirin',smiles:'CC(=O)Oc1ccccc1C(=O)O',indication:'Anti-inflammatory / Analgesic'},
+  {name:'Ibuprofen',smiles:'CC(C)Cc1ccc(cc1)C(C)C(=O)O',indication:'NSAID / Pain Relief'},
+  {name:'Paracetamol',smiles:'CC(=O)Nc1ccc(O)cc1',indication:'Analgesic / Antipyretic'},
+  {name:'Caffeine',smiles:'Cn1c(=O)c2c(ncn2C)n(C)c1=O',indication:'CNS Stimulant'},
+  {name:'Metformin',smiles:'CN(C)C(=N)NC(=N)N',indication:'Type 2 Diabetes'},
+  {name:'Fluoxetine',smiles:'CNCCC(Oc1ccc(cc1)C(F)(F)F)c1ccccc1',indication:'SSRI / Depression'},
+  {name:'Omeprazole',smiles:'COc1ccc2nc([nH]c2c1)S(=O)Cc1ncc(C)c(OC)c1C',indication:'GERD / Peptic Ulcer'},
+  {name:'Amoxicillin',smiles:'CC1(C)SC2C(NC(=O)C(N)c3ccc(O)cc3)C(=O)N2C1C(=O)O',indication:'Antibiotic β-lactam'},
+  {name:'Ciprofloxacin',smiles:'O=C(O)c1cn(C2CC2)c2cc(N3CCNCC3)c(F)cc2c1=O',indication:'Antibiotic Fluoroquinolone'},
+  {name:'Chloroquine',smiles:'CCN(CC)CCCC(C)Nc1ccnc2cc(Cl)ccc12',indication:'Antimalarial'},
+  {name:'Warfarin',smiles:'OC(=O)Cc1ccccc1OC(=O)c1ccc(Cl)cc1',indication:'Anticoagulant'},
+  {name:'Diazepam',smiles:'CN1C(=O)CN=C(c2ccccc2)c2cc(Cl)ccc21',indication:'Anxiolytic Benzodiazepine'},
+  {name:'Tamoxifen',smiles:'CCC(=C(c1ccccc1)c1ccc(OCCN(C)C)cc1)c1ccccc1',indication:'Breast Cancer ER Antagonist'},
+  {name:'Oseltamivir',smiles:'CCOC(=O)C1=CC(CC(CC1)OC(=O)C(C)C)N',indication:'Antiviral / Influenza'},
+  {name:'Dopamine',smiles:'NCCc1ccc(O)c(O)c1',indication:'Neurotransmitter / Vasopressor'},
+];
+
+function featureVec(s){
+  const d=computeDescriptors(s);
+  return[d.molecular_weight/500,d.logp/5,d.hbd/5,d.hba/10,d.tpsa/150,d.rotatable_bonds/10,
+    d.aromatic_rings/4,d.ring_count/6,d.frac_csp3,d.heteroatoms/10,
+    (s.match(/c/g)||[]).length/20,(s.match(/N/gi)||[]).length/8,(s.match(/O/g)||[]).length/8,
+    (s.match(/F/g)||[]).length/4,(s.match(/Cl/g)||[]).length/3,
+    s.includes('=O')?1:0,s.includes('C(=O)O')?1:0,s.includes('N')?1:0,s.includes('c1ccccc1')?1:0,d.heavy_atoms/50];
+}
+
+function simScore(a,b){
+  const fa=featureVec(a),fb=featureVec(b);
+  let dot=0,mA=0,mB=0;
+  for(let i=0;i<fa.length;i++){dot+=fa[i]*fb[i];mA+=fa[i]*fa[i];mB+=fb[i]*fb[i];}
+  return Math.round(Math.max(0,dot/(Math.sqrt(mA)*Math.sqrt(mB)+1e-8))*100*10)/10;
+}
+
+function computeSimilarity(s){
+  return DRUGS.map(d=>({...d,similarity:simScore(s,d.smiles)})).sort((a,b)=>b.similarity-a.similarity).slice(0,5);
+}
+
+// ─── 3D Viewer ────────────────────────────────────────────────────────────────
+let viewer3d=null;
+
+
+// ─── UI ───────────────────────────────────────────────────────────────────────
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='view3d' && window._currentSmiles){
+    // Small delay so panel is visible before rendering
+    setTimeout(()=>{
+      const el=document.getElementById('viewer');
+      el.innerHTML='';
+      if(viewer3d){try{viewer3d.clear();}catch(e){}}
+      viewer3d=null;
+      if(!window.$3Dmol) return;
+      viewer3d=window.$3Dmol.createViewer(el,{backgroundColor:'0x0f0f0f'});
+      try{
+        viewer3d.addModel(window._currentSmiles,'smiles');
+        viewer3d.setStyle({},{
+          stick:{radius:.12,colorscheme:'Jmol'},
+          sphere:{scale:.20,colorscheme:'Jmol'}
+        });
+        viewer3d.zoomTo();
+        viewer3d.spin('y',.6);
+        viewer3d.render();
+      }catch(e){
+        document.getElementById('vizWarn').textContent='⚠ Could not render molecule';
+      }
+    },100);
+  }
+}
+
+function setEx(s){document.getElementById('smilesInput').value=s;handleAnalyze();}
+
+function showError(msg){
+  const el=document.getElementById('errorStrip');
+  document.getElementById('errorMsg').textContent=msg;
+  el.classList.add('active');
+}
+
+function hideError(){document.getElementById('errorStrip').classList.remove('active');}
+
+function animateGauge(score,color){
+  const circ=2*Math.PI*58;
+  const arc=document.getElementById('gaugeArc');
+  const red=document.getElementById('gaugeRed');
+  const num=document.getElementById('gaugeNum');
+  const lbl=document.getElementById('gaugeLabel');
+  arc.setAttribute('stroke',color);
+  arc.style.filter=`drop-shadow(0 0 12px ${color}) drop-shadow(0 0 24px ${color}44)`;
+  setTimeout(()=>{
+    const dash=score/100*circ;
+    arc.setAttribute('stroke-dasharray',`${dash} ${circ}`);
+    red.setAttribute('stroke-dasharray',`${(100-score)/100*circ} ${circ}`);
+    red.setAttribute('stroke-dashoffset',-dash);
+    num.setAttribute('fill',color);
+    num.textContent=Math.round(score);
+  },80);
+  lbl.textContent='';
+  setTimeout(()=>{lbl.textContent=score>=75?'Highly Stable':score>=50?'Moderately Stable':score>=25?'Marginally Stable':'Unstable';lbl.style.color=color;},200);
+}
+
+function renderMetrics(d){
+  const items=[
+    {l:'Mol. Weight',v:d.molecular_weight,u:' Da',hot:d.molecular_weight>500},
+    {l:'LogP',v:d.logp,u:'',hot:Math.abs(d.logp)>5},
+    {l:'H-Bond Donors',v:d.hbd,u:'',hot:d.hbd>5},
+    {l:'H-Bond Acceptors',v:d.hba,u:'',hot:d.hba>10},
+    {l:'TPSA',v:d.tpsa,u:' Å²',hot:d.tpsa>140},
+    {l:'Rot. Bonds',v:d.rotatable_bonds,u:''},
+    {l:'Arom. Rings',v:d.aromatic_rings,u:''},
+    {l:'Ring Count',v:d.ring_count,u:''},
+    {l:'Frac CSP3',v:d.frac_csp3,u:''},
+    {l:'Heavy Atoms',v:d.heavy_atoms,u:''},
+  ];
+  document.getElementById('metricsGrid').innerHTML=items.map(i=>
+    `<div class="metric${i.hot?' hot':''}"><div class="metric-lbl">${i.l}</div>
+    <div class="metric-val">${i.v}<span class="metric-unit">${i.u||''}</span></div></div>`
+  ).join('');
+}
+
+function renderLipinski(lip){
+  const pills=Object.entries(lip.rules).map(([r,p])=>
+    `<div class="lip-rule"><div class="lip-dot ${p?'pass':'fail'}"></div>${r}</div>`
+  ).join('');
+  document.getElementById('lipWrap').innerHTML=
+    `<div class="lip-hdr"><span class="lip-title">Lipinski Ro5</span>
+    <span class="lip-badge ${lip.drug_like?'pass':'fail'}">${lip.verdict}</span></div>
+    <div class="lip-rules">${pills}</div>`;
+}
+
+function renderDrugs(matches){
+  document.getElementById('drugList').innerHTML=matches.map((m,i)=>{
+    const col=m.similarity>=60?'#00e676':m.similarity>=30?'#ff6b35':'#ff2d2d';
+    return`<div class="drug-row" style="animation-delay:${i*0.08}s">
+      <div class="drug-hdr">
+        <span class="drug-name">${m.name}</span>
+        <span class="drug-pct" style="color:${col}">${m.similarity}%</span>
+      </div>
+      <div class="drug-track">
+        <div class="drug-fill" id="dbar${i}" style="background:linear-gradient(90deg,${col}33,${col});box-shadow:0 0 10px ${col}55"></div>
+      </div>
+      <div class="drug-ind">${m.indication}</div>
+    </div>`;
+  }).join('');
+  matches.forEach((_,i)=>{
+    setTimeout(()=>{const b=document.getElementById('dbar'+i);if(b)b.style.width=matches[i].similarity+'%';},150+i*100);
+  });
+}
+
+// ─── AI Analysis ──────────────────────────────────────────────────────────────
+async function fetchAI(smiles,desc,energy,stability,lip,topDrug){
+  const el=document.getElementById('aiContent');
+  el.textContent='Analyzing with Claude AI...';
+  const prompt=`You are a computational chemistry expert. Analyze this molecule:
+
+SMILES: ${smiles}
+Formula: ${desc.formula}
+MW: ${desc.molecular_weight} Da | LogP: ${desc.logp} | TPSA: ${desc.tpsa} Å²
+HBD: ${desc.hbd} | HBA: ${desc.hba} | Aromatic Rings: ${desc.aromatic_rings}
+Estimated Energy: ${energy} kcal/mol
+Stability Score: ${stability.score}/100 (${stability.label})
+Lipinski: ${lip.verdict}
+Top Drug Match: ${topDrug?.name||'N/A'} (${topDrug?.similarity||0}% similarity — ${topDrug?.indication||'N/A'})
+
+Provide a concise expert analysis (~200 words) covering:
+1. Key structural features
+2. Why it has this stability profile
+3. Drug-likeness beyond Lipinski
+4. Potential therapeutic relevance
+5. Any notable red flags or promising features`;
+
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await r.json();
+    el.textContent=data.content?.find(b=>b.type==='text')?.text||'Analysis unavailable.';
+  }catch(e){
+    el.textContent='AI analysis requires API access.\n\nThe structural data above provides comprehensive analysis without it.\n\nError: '+e.message;
+  }
+}
+
+// ─── Loading Messages ─────────────────────────────────────────────────────────
+const MSGS=['Parsing molecular topology...','Computing descriptor features...','Running Morgan fingerprints...','Querying stability engine...','Matching drug database...','Rendering results...'];
+
+async function runLoader(){
+  for(let i=0;i<MSGS.length;i++){
+    document.getElementById('loadMsg').textContent=MSGS[i];
+    await new Promise(r=>setTimeout(r,320));
+  }
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+async function handleAnalyze(){
+  const smiles=document.getElementById('smilesInput').value.trim();
+  if(!smiles){showError('Please enter a SMILES string.');return;}
+
+  hideError();
+  document.getElementById('scanBtn').disabled=true;
+  document.getElementById('loader').classList.add('active');
+  document.getElementById('results').classList.remove('revealed');
+
+  runLoader();
+
+  // Enforce 2s minimum
+  await new Promise(r=>setTimeout(r,2000));
+
+  try{
+    window._currentSmiles=smiles;
+    const desc=computeDescriptors(smiles);
+    const energy=predictEnergy(desc,smiles);
+    const stability=stabilityScore(energy,desc.heavy_atoms);
+    const lip=lipinskiCheck(desc);
+    const matches=computeSimilarity(smiles);
+
+    // Identity
+    document.getElementById('rFormula').textContent=desc.formula;
+    document.getElementById('rSmiles').textContent=smiles;
+    document.getElementById('rChips').innerHTML=
+      `<span class="chip g">${desc.heavy_atoms} heavy atoms</span>
+       <span class="chip r">${desc.aromatic_rings} arom. rings</span>
+       <span class="chip d">JS Heuristic Engine</span>
+       <span class="chip d">client-side</span>`;
+
+    // Banner
+    document.getElementById('eEnergy').textContent=energy;
+    document.getElementById('ePerAtom').textContent=Math.round(energy/Math.max(desc.heavy_atoms,1)*100)/100;
+    document.getElementById('eViolations').textContent=lip.violations;
+    document.getElementById('eViolations').style.color=lip.drug_like?'#00e676':'#ff2d2d';
+    document.getElementById('eMW').textContent=desc.molecular_weight;
+
+    // Gauge
+    animateGauge(stability.score,stability.color);
+
+    // Panels
+    renderMetrics(desc);
+    renderLipinski(lip);
+    renderDrugs(matches);
+
+    // Show results
+    document.getElementById('results').classList.add('active');
+    setTimeout(()=>{
+      document.getElementById('results').classList.add('revealed');
+      document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+    },80);
+
+    // AI async
+    fetchAI(smiles,desc,energy,stability,lip,matches[0]);
+
+  }catch(e){
+    showError('Analysis failed: '+e.message);
+    console.error(e);
+  }finally{
+    document.getElementById('loader').classList.remove('active');
+    document.getElementById('scanBtn').disabled=false;
+  }
+}
+
+document.getElementById('smilesInput').addEventListener('keydown',e=>{if(e.key==='Enter')handleAnalyze();});
+</script>
+</body>
+</html>

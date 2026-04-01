@@ -1,0 +1,26 @@
+[
+  {
+    "name": "GradientBoosting",
+    "mae": 1051.7765,
+    "rmse": 1670.1664,
+    "r2": 0.9956,
+    "train_time_s": 2164.4,
+    "file": "qscreen_model_gradientboosting.pkl"
+  },
+  {
+    "name": "RandomForest",
+    "mae": 175.3829,
+    "rmse": 1233.9157,
+    "r2": 0.9976,
+    "train_time_s": 2217.1,
+    "file": "qscreen_model_randomforest.pkl"
+  },
+  {
+    "name": "XGBoost",
+    "mae": 652.1398,
+    "rmse": 1177.1528,
+    "r2": 0.9978,
+    "train_time_s": 24.1,
+    "file": "qscreen_model_xgboost.pkl"
+  }
+]
