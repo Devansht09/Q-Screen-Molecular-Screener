@@ -82,8 +82,41 @@ npm run dev
 
 ---
 
-## ⚙️ Tech Stack
-- Python (FastAPI)
-- React + Vite
-- Scikit-learn
-- RDKit
+## 🧠 How It Works
+
+1. User inputs a molecule (SMILES format)  
+2. RDKit converts it into numerical features  
+3. Machine learning model predicts stability  
+4. System compares molecule with known drugs  
+5. Displays results with similarity and inferred usage  
+
+---
+
+## 📁 Project Structure
+
+```
+ml/         # model training scripts
+backend/    # FastAPI server
+frontend/   # React UI
+```
+
+---
+
+## 🌍 Applications
+
+- Drug discovery  
+- Material science  
+- Green chemistry  
+- Educational use in computational chemistry  
+
+---
+
+## ⚠️ Disclaimer
+
+This project is an educational prototype.
+
+- Does not replace laboratory experiments  
+- Does not perform real quantum simulations  
+- Does not provide medical advice  
+
+---
