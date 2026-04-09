@@ -65,11 +65,11 @@ function ScoreOrb({ score, label, color, size = 220 }) {
             style={{ transition: "stroke-dasharray 1.5s cubic-bezier(.22,1,.36,1)", filter: `drop-shadow(0 0 12px ${color})` }}
           />
         </svg>
-        <div className="score-num" style={{ color, fontSize: size > 160 ? "3.6rem" : "2.2rem" }}>
+        <div className="score-num" style={{ color: "#000000", fontSize: size > 160 ? "3.6rem" : "2.2rem" }}>
           {Math.round(animated)}
         </div>
         <div className="score-100">/ 100</div>
-        <div className="score-badge" style={{ color, borderColor: color + "44", background: color + "18" }}>
+        <div className="score-badge" style={{ color: "#000000", borderColor: color + "44", background: color + "18" }}>
           {label}
         </div>
       </div>
@@ -122,10 +122,10 @@ function ModelCard({ prediction, isActive, onClick, rank }) {
       <div className="model-score-row">
         <div>
           <div className="model-score-label">Stability Score</div>
-          <div className="model-score-val" style={{ color: prediction.stability.color }}>
+          <div className="model-score-val" style={{ color: "#000000" }}>
             {Math.round(animated)}<span style={{ fontSize: "1rem", color: "var(--wm)" }}>/100</span>
           </div>
-          <div className="model-status" style={{ color: prediction.stability.color }}>
+          <div className="model-status" style={{ color: "#000000" }}>
             {prediction.stability.label}
           </div>
         </div>
@@ -154,15 +154,15 @@ function ModelCard({ prediction, isActive, onClick, rank }) {
         <div className="model-metrics">
           <div className="metric-chip">
             <span className="mc-label">MAE</span>
-            <span className="mc-val" style={{ color: prediction.color }}>{prediction.mae}</span>
+            <span className="mc-val" style={{ color: "#000000" }}>{prediction.mae}</span>
           </div>
           <div className="metric-chip">
             <span className="mc-label">R²</span>
-            <span className="mc-val" style={{ color: prediction.color }}>{prediction.r2}</span>
+            <span className="mc-val" style={{ color: "#000000" }}>{prediction.r2}</span>
           </div>
           <div className="metric-chip">
             <span className="mc-label">RMSE</span>
-            <span className="mc-val" style={{ color: prediction.color }}>{prediction.rmse}</span>
+            <span className="mc-val" style={{ color: "#000000" }}>{prediction.rmse}</span>
           </div>
         </div>
       )}
@@ -196,7 +196,7 @@ function AccuracyPanel({ predictions }) {
         <div className="acc-bars">
           {predictions.map(p => (
             <div key={p.model_name} className="acc-bar-row">
-              <div className="acc-bar-label" style={{ color: p.color }}>{p.display_name}</div>
+              <div className="acc-bar-label" style={{ color: "#000000" }}>{p.display_name}</div>
               <div className="acc-bar-track">
                 {p.mae != null ? (
                   <AccBar value={p.mae} max={maxMAE * 1.1} color={p.color} isBest={p.mae === bestMAE} />
@@ -215,7 +215,7 @@ function AccuracyPanel({ predictions }) {
         <div className="acc-bars">
           {predictions.map(p => (
             <div key={p.model_name} className="acc-bar-row">
-              <div className="acc-bar-label" style={{ color: p.color }}>{p.display_name}</div>
+              <div className="acc-bar-label" style={{ color: "#000000" }}>{p.display_name}</div>
               <div className="acc-bar-track">
                 {p.r2 != null ? (
                   <AccBar value={p.r2} max={1.0} color={p.color} isBest={p.r2 === bestR2} />
@@ -237,7 +237,7 @@ function AccuracyPanel({ predictions }) {
           </div>
           {predictions.map(p => (
             <div key={p.model_name} className="acc-table-row">
-              <span style={{ color: p.color, fontWeight: 600 }}>{p.display_name}</span>
+              <span style={{ color: "#000000", fontWeight: 600 }}>{p.display_name}</span>
               <span>{p.mae != null ? `${p.mae}` : "—"}</span>
               <span>{p.rmse != null ? `${p.rmse}` : "—"}</span>
               <span className={p.r2 === bestR2 ? "best-val" : ""}>{p.r2 != null ? p.r2 : "—"}</span>
@@ -277,7 +277,7 @@ function DrugRow({ match, index }) {
     const t = setTimeout(() => setW(match.similarity), 200 + index * 100);
     return () => clearTimeout(t);
   }, [match.similarity, index]);
-  const col = match.similarity >= 60 ? "var(--green)" : match.similarity >= 30 ? "var(--blue)" : "var(--red)";
+  const col = match.similarity >= 60 ? "#000000" : match.similarity >= 30 ? "var(--blue)" : "var(--red)";
   return (
     <div className="drug-entry">
       <div className="drow">
@@ -515,7 +515,7 @@ export default function App() {
                       color={activePred.stability.color}
                       size={220}
                     />
-                    <div className="orb-model-name" style={{ color: activePred.color }}>
+                    <div className="orb-model-name" style={{ color: "#000000" }}>
                       {activePred.display_name}
                     </div>
                   </div>
@@ -599,7 +599,7 @@ export default function App() {
 
                     <div className="gpanel">
                       <div className="gph">
-                        <div className="gpt"><div className="pi" style={{ background: "var(--green)" }} />Lipinski Ro5</div>
+                        <div className="gpt"><div className="pi" style={{ background: "#000000" }} />Lipinski Ro5</div>
                         <div className={`lip-verdict-badge ${result.lipinski.drug_like ? "pass" : "fail"}`}>
                           {result.lipinski.verdict}
                         </div>
@@ -616,9 +616,9 @@ export default function App() {
                       <div className="gpb">
                         {result.predictions.map(p => (
                           <div key={p.model_name} className="energy-compare-row">
-                            <div className="ec-model" style={{ color: p.color }}>{p.display_name}</div>
+                            <div className="ec-model" style={{ color: "#000000" }}>{p.display_name}</div>
                             <div className="ec-energy">{p.energy_kcal}</div>
-                            <div className="ec-score" style={{ color: p.stability.color }}>
+                            <div className="ec-score" style={{ color: "#000000" }}>
                               {Math.round(p.stability.score)}/100
                             </div>
                           </div>
